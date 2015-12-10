@@ -97,6 +97,9 @@ bool Trajectories::readParameters() {
 	n_.param<double>("trajectories/max_velocity", maxVel_, 0.2);
 	n_.param<double>("trajectories/max_acceleration", maxAccel_, 0.2);
 
+	ROS_INFO_STREAM("[Trajectories::readParameters] Max velocity = " << maxVel_);
+	ROS_INFO_STREAM("[Trajectories::readParameters] Max acceleration = " << maxAccel_);
+
 	return true;
 }
 
@@ -164,52 +167,34 @@ bool Trajectories::generateLineTrajectory(){
 	Eigen::Vector3d vel = Eigen::Vector3d::Zero();
 	Eigen::Vector3d acc = Eigen::Vector3d::Zero();
 
-	double ta, tf;
+	/*
+	 * 5th order polynomial trajectory
+	 */
 
-	if (distance < (maxVel_ * maxVel_) / maxAccel_){
-		ta = sqrt(distance / maxAccel_);
-		tf = 2.0 * ta;
-		ROS_INFO_STREAM ("[Trajectories::generateLineTrajectory] shortened: ta = " << ta << " and tf = " << tf);
+	// max velocity time limit
+	double T_vel = distance / maxVel_ * (15.0 / 8.0);
+
+	// max acceleration limit
+	double t_T = (6.0 - sqrt(12.0)) / 12.0;
+	double T_acc = sqrt((distance * 60.0 * t_T / maxAccel_)*(1.0 - 3.0 * t_T + 2.0 * pow(t_T,2)));
+
+	double tf;
+	if (T_vel > T_acc){
+		ROS_INFO("[Trajectories::generateLineTrajectory] limited by velocity");
+		tf = T_vel;
 	}else{
-		ta = maxVel_ / maxAccel_;
-		tf = (distance * maxAccel_ + maxVel_ * maxVel_) / (maxAccel_ * maxVel_);
-		ROS_INFO_STREAM ("[Trajectories::generateLineTrajectory] achieves max velocity: ta = " << ta << " and tf = " << tf);
+		ROS_INFO("[Trajectories::generateLineTrajectory] limited by acceleration");
+		tf = T_acc;
 	}
+	double dposMagn, velMagn, accMagn;
 
-	while(t <= tf){
+	while(t < tf){
 
-		if (t <= ta){
-			/*
-			 * Acceleration
-			 */
-//			ROS_INFO_STREAM("[Trajectories::generateLineTrajectory] acceleration");
-			pos = lineStart_ + unitDirection * 0.5 * maxAccel_ * t * t;
-			vel = unitDirection * maxVel_ * t / ta;
-			acc = unitDirection * maxAccel_;
+		fifthOrderPolynomial(t, tf, distance, dposMagn, velMagn, accMagn);
 
-		}else if(t < (tf - ta)){
-			/*
-			 * Constant velocity
-			 */
-//			ROS_INFO_STREAM("[Trajectories::generateLineTrajectory] cruising");
-			pos = pos + unitDirection * maxAccel_ * ta * (t - ta * 0.5);
-			vel = unitDirection * maxVel_;
-			acc.setZero();
-
-		}else{
-			/*
-			 * Deceleration
-			 */
-//			ROS_INFO_STREAM("[Trajectories::generateLineTrajectory] deceleration");
-			pos = lineEnd_ - unitDirection * 0.5 * maxAccel_ * (tf - t) * (tf - t);
-			vel = unitDirection * maxVel_ * (tf - t) / ta;
-			acc = - unitDirection * maxAccel_;
-		}
-
-//		ROS_INFO_STREAM("[Trajectories::generateLineTrajectory] pos, vel, acc = ["
-//				<< pos(0) << "," << pos(1) << "," << pos(2) << "]"
-//				<< vel(0) << "," << vel(1) << "," << vel(2) << "]"
-//				<< acc(0) << "," << acc(1) << "," << acc(2) << "]");
+		pos = lineStart_ + unitDirection * dposMagn;
+		vel = unitDirection * velMagn;
+		acc = unitDirection * accMagn;
 
 		anypulator_msgs::StateCartesian state;
 		state.position.x = pos(0);
@@ -249,6 +234,18 @@ bool Trajectories::generateLineTrajectory(){
 
 		trajectory_.push_back(state);
 	}
+
+	return true;
+}
+
+bool Trajectories::fifthOrderPolynomial(const double &t, const double &Tf, const double &d, double &dpos, double &vel, double &accel){
+		double a3 = 10.0 * d / pow(Tf,3);
+		double a4 = -15.0 * d / pow(Tf,4);
+		double a5 = 6 * d / pow(Tf,5);
+
+		dpos = a3 * pow(t,3) + a4 * pow(t,4) + a5 * pow(t,5);
+		vel = 3.0 * a3 * pow(t,2) + 4.0 * a4 * pow(t,3) + 5.0 * a5 * pow(t,4);
+		accel = 6.0 * a3 * t + 12.0 * a4 * pow(t,2) + 20.0 * a5 * pow(t,3);
 
 	return true;
 }

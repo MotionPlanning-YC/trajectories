@@ -71,6 +71,9 @@ class Trajectories {
   bool generateLineTrajectory();
   bool generateLineStart();
 
+  bool fifthOrderPolynomial(const double &t, const double &Tf, const double &d, double &dpos, double &vel, double &accel);
+
+
   //Publishers
   ros::Publisher CommandPublisher_;
   ros::Publisher TrajectoryPosePublisher_;

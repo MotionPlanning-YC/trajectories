@@ -25,6 +25,6 @@ trajectories:
       y: 0.2
       z: 0.4
       
-  max_velocity: 0.5
-  max_acceleration: 0.5
+  max_velocity: 1.0
+  max_acceleration: 1.0
 
