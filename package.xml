@@ -1,0 +1,22 @@
+<?xml version="1.0"?>
+<package format="2">
+  <name>trajectories</name>
+  <version>0.1.0</version>
+  <description>The trajectories package</description>
+  <maintainer email="kbodie@ethz.ch">Karen Bodie</maintainer>
+  <license>BSD</license>
+  <url type="website">https://github.com/kajabo/trajectories</url>
+  <author email="kbodie@ethz.ch">Karen Bodie</author>
+
+  <buildtool_depend>catkin</buildtool_depend>
+  
+  <depend>roscpp</depend>
+  <depend>roscpp_nodewrap</depend>
+  <depend>geometry_msgs</depend>
+  <depend>nav_msgs</depend>
+  <depend>std_msgs</depend>
+  <depend>tf</depend>
+  <depend>anypulator_msgs</depend>
+  <depend>eigen</depend>
+
+</package>

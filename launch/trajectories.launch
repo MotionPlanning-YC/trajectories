@@ -1,0 +1,18 @@
+<launch>
+
+  <!-- Set the initial pose of ANYpulator -->
+  <arg name="initial_joint_positions" default="[0.812, -0.245, 2.205]"/>
+  
+  <arg name="model" value="anypulator_3drive"/>
+
+ <rosparam command="load"  file="$(find trajectories)/config/param.yaml"/>
+ 
+  <!-- Load robot description -->
+  <include file="$(find anypulator_description)/launch/load.launch">
+    <arg name="model" value="$(arg model)" />
+  </include>
+
+  <!-- Load trajectory generator node -->
+  <node name="trajectory_generator" pkg="trajectories" type="trajectories_node" output="screen" />
+  
+</launch>

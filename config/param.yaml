@@ -1,0 +1,30 @@
+trajectories:
+  # publishing frequency
+  freq: 400
+
+  # Circle parameters
+  circle:
+    center: 
+      x: 0.3
+      y: 0.0
+      z: 0.3
+    radius: 0.2
+    normal_vector:
+      x: 1.0
+      y: 0.0
+      z: 0.0
+
+  # Line parameters
+  line: 
+    start:
+      x: 0.3
+      y: -0.2
+      z: 0.2
+    end:
+      x: 0.3
+      y: 0.2
+      z: 0.4
+      
+  max_velocity: 0.5
+  max_acceleration: 0.5
+
