@@ -38,7 +38,7 @@
 #include <vector>
 
 #include <sensor_msgs/JointState.h>
-#include <anypulator_msgs/StateCartesian.h>
+#include <huskanypulator_msgs/EEstate.h>
 
 namespace trajectories {
 
@@ -96,7 +96,7 @@ class Trajectories {
   Eigen::Vector3d lineStart_, lineEnd_;
   double maxVel_, maxAccel_;
 
-  std::vector<anypulator_msgs::StateCartesian> trajectory_;
+  std::vector<huskanypulator_msgs::EEstate> trajectory_;
   int index_;
 };
 

@@ -13,7 +13,7 @@ find_package(catkin REQUIRED COMPONENTS
   nav_msgs
   std_msgs
   tf
-  anypulator_msgs
+  huskanypulator_msgs
 )
 
 find_package(Eigen3 REQUIRED)
@@ -32,7 +32,7 @@ catkin_package(
     nav_msgs
     std_msgs
     tf
-    anypulator_msgs
+    huskanypulator_msgs
 )
 
 include_directories(

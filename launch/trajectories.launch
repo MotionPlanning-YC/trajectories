@@ -6,11 +6,6 @@
   <arg name="model" value="anypulator_3drive"/>
 
  <rosparam command="load"  file="$(find trajectories)/config/param.yaml"/>
- 
-  <!-- Load robot description -->
-  <include file="$(find anypulator_description)/launch/load.launch">
-    <arg name="model" value="$(arg model)" />
-  </include>
 
   <!-- Load trajectory generator node -->
   <node name="trajectory_generator" pkg="trajectories" type="trajectories_node" output="screen" />

@@ -49,7 +49,7 @@ void Trajectories::initializePublishers() {
 //	TrajectoryPosePublisher_ = advertise<geometry_msgs::PoseStamped>("trajectory_position", "/trajectory_position", 100);
 //	TrajectoryTwistPublisher_ = advertise<geometry_msgs::TwistStamped>("trajectory_velocity", "/trajectory_velocity", 100);
 
-	CommandPublisher_ = n_.advertise<anypulator_msgs::StateCartesian>("/state_command", 100);
+	CommandPublisher_ = n_.advertise<huskanypulator_msgs::EEstate>("/state_command", 100);
 	TrajectoryPosePublisher_ = n_.advertise<geometry_msgs::PoseStamped>("/trajectory_position", 100);
 	TrajectoryTwistPublisher_ = n_.advertise<geometry_msgs::TwistStamped>("/trajectory_velocity", 100);
 }
@@ -196,18 +196,36 @@ bool Trajectories::generateLineTrajectory(){
 		vel = unitDirection * velMagn;
 		acc = unitDirection * accMagn;
 
-		anypulator_msgs::StateCartesian state;
-		state.position.x = pos(0);
-		state.position.y = pos(1);
-		state.position.z = pos(2);
+		huskanypulator_msgs::EEstate state;
 
-		state.velocity.x = vel(0);
-		state.velocity.y = vel(1);
-		state.velocity.z = vel(2);
+		state.pose.position.x = pos(0);
+		state.pose.position.y = pos(1);
+		state.pose.position.z = pos(2);
+		state.pose.orientation.w = 1.0;
+		state.pose.orientation.x = 0.0;
+		state.pose.orientation.y = 0.0;
+		state.pose.orientation.z = 0.0;
 
-		state.acceleration.x = acc(0);
-		state.acceleration.y = acc(1);
-		state.acceleration.z = acc(2);
+		state.twist.linear.x = vel(0);
+		state.twist.linear.y = vel(1);
+		state.twist.linear.z = vel(2);
+		state.twist.angular.x = 0.0;
+		state.twist.angular.y = 0.0;
+		state.twist.angular.z = 0.0;
+
+		state.accel.linear.x = acc(0);
+		state.accel.linear.y = acc(1);
+		state.accel.linear.z = acc(2);
+		state.accel.angular.x = 0.0;
+		state.accel.angular.y = 0.0;
+		state.accel.angular.z = 0.0;
+
+		state.wrench.force.x = 0.0;
+		state.wrench.force.y = 0.0;
+		state.wrench.force.z = 0.0;
+		state.wrench.torque.x = 0.0;
+		state.wrench.torque.y = 0.0;
+		state.wrench.torque.z = 0.0;
 
 		trajectory_.push_back(state);
 
@@ -219,18 +237,21 @@ bool Trajectories::generateLineTrajectory(){
 	 */
 	int size = trajectory_.size();
 	for (int i = 0; i < size; i++){
-		anypulator_msgs::StateCartesian state;
-		state.position.x = trajectory_.at(size - i - 1).position.x;
-		state.position.y = trajectory_.at(size - i - 1).position.y;
-		state.position.z = trajectory_.at(size - i - 1).position.z;
-
-		state.velocity.x = - trajectory_.at(size - i - 1).velocity.x;
-		state.velocity.y = - trajectory_.at(size - i - 1).velocity.y;
-		state.velocity.z = - trajectory_.at(size - i - 1).velocity.z;
-
-		state.acceleration.x = - trajectory_.at(size - i - 1).acceleration.x;
-		state.acceleration.y = - trajectory_.at(size - i - 1).acceleration.y;
-		state.acceleration.z = - trajectory_.at(size - i - 1).acceleration.z;
+		huskanypulator_msgs::EEstate state;
+		state = trajectory_.at(size - i - 1);
+		//revert speed and acceleration
+		state.twist.linear.x  *= (-1.0);
+		state.twist.linear.y  *= (-1.0);
+		state.twist.linear.z  *= (-1.0);
+		state.twist.angular.x *= (-1.0);
+		state.twist.angular.y *= (-1.0);
+		state.twist.angular.z *= (-1.0);
+		state.accel.linear.x  *= (-1.0);
+		state.accel.linear.y  *= (-1.0);
+		state.accel.linear.z  *= (-1.0);
+		state.accel.angular.x *= (-1.0);
+		state.accel.angular.y *= (-1.0);
+		state.accel.angular.z *= (-1.0);
 
 		trajectory_.push_back(state);
 	}
@@ -256,18 +277,36 @@ bool Trajectories::generateLineStart(){
 	trajectory_.clear();
 	index_ = 0;
 
-	anypulator_msgs::StateCartesian state;
-	state.position.x = lineStart_(0);
-	state.position.y = lineStart_(1);
-	state.position.z = lineStart_(2);
+	huskanypulator_msgs::EEstate state;
 
-	state.velocity.x = 0.0;
-	state.velocity.y = 0.0;
-	state.velocity.z = 0.0;
+  state.pose.position.x = lineStart_(0);
+  state.pose.position.y = lineStart_(1);
+  state.pose.position.z = lineStart_(2);
+  state.pose.orientation.w = 1.0;
+  state.pose.orientation.x = 0.0;
+  state.pose.orientation.y = 0.0;
+  state.pose.orientation.z = 0.0;
 
-	state.acceleration.x = 0.0;
-	state.acceleration.y = 0.0;
-	state.acceleration.z = 0.0;
+  state.twist.linear.x = 0.0;
+  state.twist.linear.y = 0.0;
+  state.twist.linear.z = 0.0;
+  state.twist.angular.x = 0.0;
+  state.twist.angular.y = 0.0;
+  state.twist.angular.z = 0.0;
+
+  state.accel.linear.x = 0.0;
+  state.accel.linear.y = 0.0;
+  state.accel.linear.z = 0.0;
+  state.accel.angular.x = 0.0;
+  state.accel.angular.y = 0.0;
+  state.accel.angular.z = 0.0;
+
+  state.wrench.force.x = 0.0;
+  state.wrench.force.y = 0.0;
+  state.wrench.force.z = 0.0;
+  state.wrench.torque.x = 0.0;
+  state.wrench.torque.y = 0.0;
+  state.wrench.torque.z = 0.0;
 
 	trajectory_.push_back(state);
 
