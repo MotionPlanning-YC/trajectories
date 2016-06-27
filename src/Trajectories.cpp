@@ -96,9 +96,17 @@ bool Trajectories::readParameters() {
 	 */
 	n_.param<double>("trajectories/max_velocity", maxVel_, 0.2);
 	n_.param<double>("trajectories/max_acceleration", maxAccel_, 0.2);
-
 	ROS_INFO_STREAM("[Trajectories::readParameters] Max velocity = " << maxVel_);
 	ROS_INFO_STREAM("[Trajectories::readParameters] Max acceleration = " << maxAccel_);
+
+	/*
+	 * Orientation
+	 */
+	n_.param<double>("trajectories/orientation/w", orientationQ_(0), 1.0);
+	n_.param<double>("trajectories/orientation/x", orientationQ_(1), 0.0);
+	n_.param<double>("trajectories/orientation/y", orientationQ_(2), 0.0);
+	n_.param<double>("trajectories/orientation/z", orientationQ_(3), 0.0);
+	ROS_INFO_STREAM("[Trajectories::readParameters] Orientation = " << orientationQ_.transpose());
 
 	return true;
 }
@@ -198,13 +206,15 @@ bool Trajectories::generateLineTrajectory(){
 
 		huskanypulator_msgs::EEstate state;
 
+		state.header.frame_id = "map";
+
 		state.pose.position.x = pos(0);
 		state.pose.position.y = pos(1);
 		state.pose.position.z = pos(2);
-		state.pose.orientation.w = 1.0;
-		state.pose.orientation.x = 0.0;
-		state.pose.orientation.y = 0.0;
-		state.pose.orientation.z = 0.0;
+		state.pose.orientation.w = orientationQ_(0);
+		state.pose.orientation.x = orientationQ_(1);
+		state.pose.orientation.y = orientationQ_(2);
+		state.pose.orientation.z = orientationQ_(3);
 
 		state.twist.linear.x = vel(0);
 		state.twist.linear.y = vel(1);
@@ -279,13 +289,15 @@ bool Trajectories::generateLineStart(){
 
 	huskanypulator_msgs::EEstate state;
 
+	state.header.frame_id = "map";
+
   state.pose.position.x = lineStart_(0);
   state.pose.position.y = lineStart_(1);
   state.pose.position.z = lineStart_(2);
-  state.pose.orientation.w = 1.0;
-  state.pose.orientation.x = 0.0;
-  state.pose.orientation.y = 0.0;
-  state.pose.orientation.z = 0.0;
+  state.pose.orientation.w = orientationQ_(0);
+  state.pose.orientation.x = orientationQ_(1);
+  state.pose.orientation.y = orientationQ_(2);
+  state.pose.orientation.z = orientationQ_(3);
 
   state.twist.linear.x = 0.0;
   state.twist.linear.y = 0.0;

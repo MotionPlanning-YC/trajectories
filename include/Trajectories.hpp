@@ -96,6 +96,8 @@ class Trajectories {
   Eigen::Vector3d lineStart_, lineEnd_;
   double maxVel_, maxAccel_;
 
+  Eigen::Vector4d orientationQ_;
+
   std::vector<huskanypulator_msgs::EEstate> trajectory_;
   int index_;
 };
