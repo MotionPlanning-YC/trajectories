@@ -98,6 +98,8 @@ class Trajectories {
 
   Eigen::Vector4d orientationQ_;
 
+  std::string frameID_;
+
   std::vector<huskanypulator_msgs::EEstate> trajectory_;
   int index_;
 };

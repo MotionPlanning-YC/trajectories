@@ -65,6 +65,8 @@ void Trajectories::initializeServices() {
 bool Trajectories::readParameters() {
 	ROS_INFO("[Trajectories::readParameters] reading parameters...");
 	n_.param<double>("trajectories/freq", pubFreq_, 200);
+	n_.param<std::string>("trajectories/frame_ID", frameID_, "map");
+	ROS_INFO_STREAM("[Trajectories::readParameters] frameID = " << frameID_);
 
 	/*
 	 * Circle Parameters
@@ -154,6 +156,7 @@ bool Trajectories::stopCommand(std_srvs::Empty::Request &req,
 bool Trajectories::generateCircleTrajectory(){
 	trajectory_.clear();
 	index_ = 0;
+	ROS_INFO("[Trajectories::generateCircleTrajectory] Not yet implemented.");
 
 	return true;
 }
@@ -206,7 +209,7 @@ bool Trajectories::generateLineTrajectory(){
 
 		huskanypulator_msgs::EEstate state;
 
-		state.header.frame_id = "map";
+		state.header.frame_id = frameID_;
 
 		state.pose.position.x = pos(0);
 		state.pose.position.y = pos(1);
@@ -289,7 +292,7 @@ bool Trajectories::generateLineStart(){
 
 	huskanypulator_msgs::EEstate state;
 
-	state.header.frame_id = "map";
+	state.header.frame_id = frameID_;
 
   state.pose.position.x = lineStart_(0);
   state.pose.position.y = lineStart_(1);

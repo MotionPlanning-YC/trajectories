@@ -27,6 +27,7 @@ trajectories:
       
   max_velocity: 0.2
   max_acceleration: 0.2
+  frame_ID: map
   
   # Orientation of endeffector
   orientation:
