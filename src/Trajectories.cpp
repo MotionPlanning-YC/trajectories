@@ -45,10 +45,6 @@ bool Trajectories::sendTrajectory(){
 
 void Trajectories::initializePublishers() {
 	ROS_INFO("[Trajectories::initializePublishers] initializing publishers...");
-//	CommandPublisher_ = advertise<anypulator_msgs::StateCartesian>("robot_command", "/state_command", 100);
-//	TrajectoryPosePublisher_ = advertise<geometry_msgs::PoseStamped>("trajectory_position", "/trajectory_position", 100);
-//	TrajectoryTwistPublisher_ = advertise<geometry_msgs::TwistStamped>("trajectory_velocity", "/trajectory_velocity", 100);
-
 	CommandPublisher_ = n_.advertise<huskanypulator_msgs::EEstate>("/state_command", 100);
 	TrajectoryPosePublisher_ = n_.advertise<geometry_msgs::PoseStamped>("/trajectory_position", 100);
 	TrajectoryTwistPublisher_ = n_.advertise<geometry_msgs::TwistStamped>("/trajectory_velocity", 100);
@@ -210,6 +206,10 @@ bool Trajectories::generateLineTrajectory(){
 		huskanypulator_msgs::EEstate state;
 
 		state.header.frame_id = frameID_;
+		state.use_pose = true;
+		state.use_twist = true;
+		state.use_accel = false;
+		state.use_wrench = false;
 
 		state.pose.position.x = pos(0);
 		state.pose.position.y = pos(1);
@@ -293,6 +293,10 @@ bool Trajectories::generateLineStart(){
 	huskanypulator_msgs::EEstate state;
 
 	state.header.frame_id = frameID_;
+  state.use_pose = true;
+  state.use_twist = false;
+  state.use_accel = false;
+  state.use_wrench = false;
 
   state.pose.position.x = lineStart_(0);
   state.pose.position.y = lineStart_(1);
