@@ -24,7 +24,8 @@ int main(int argc, char** argv)
 	ros::Rate loop_rate(loop);
 
 	// Create instance of the trajectory generator object.
-	trajectories::Trajectories *trajectoryGenerator = new trajectories::Trajectories(n);
+	boost::shared_ptr<trajectories::Trajectories> trajectoryGenerator =
+	    boost::make_shared<trajectories::Trajectories>(n);
 
 	while (ros::ok())
 	{

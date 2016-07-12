@@ -36,6 +36,7 @@ bool Trajectories::isGoReceived(){
 }
 
 bool Trajectories::sendTrajectory(){
+  trajectory_.at(index_).header.stamp = ros::Time::now();//update stamp to allow plotting
 	CommandPublisher_.publish(trajectory_.at(index_));
 	index_ ++;
 	if (index_ >= trajectory_.size())
@@ -207,7 +208,7 @@ bool Trajectories::generateLineTrajectory(){
 
 		state.header.frame_id = frameID_;
 		state.use_pose = true;
-		state.use_twist = true;
+		state.use_twist = false;
 		state.use_accel = false;
 		state.use_wrench = false;
 
