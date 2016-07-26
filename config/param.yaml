@@ -1,6 +1,6 @@
 trajectories:
   # publishing frequency
-  freq: 400
+  freq: 200
 
   # Circle parameters
   circle:
@@ -35,3 +35,6 @@ trajectories:
     x: 0.0
     y: 0.0
     z: 1.0
+
+  # Frame id of the endeffector
+  EE_frame_ID: ARM1_HAND

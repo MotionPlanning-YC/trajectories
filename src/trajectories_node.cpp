@@ -8,7 +8,7 @@
  */
 
 #include <ros/ros.h>
-#include "Trajectories.hpp"
+#include <trajectories/Trajectories.hpp>
 
 
 int main(int argc, char** argv)
@@ -16,16 +16,20 @@ int main(int argc, char** argv)
 	// Initialize node.
 	ros::init(argc, argv, "trajectory_node");
 	ros::NodeHandle n;
-	int loop;
 
 	// Read params
-	n.getParam("trajectories/freq", loop);
+	int loopFreq;
+	if(!n.getParam("trajectories/freq", loopFreq)){
+	  ROS_ERROR("[Trajectories] Could not retrieve update frequency. Exiting.");
+	  return 1;
+	}
 
-	ros::Rate loop_rate(loop);
+	ros::Rate loop_rate(loopFreq);
+
 
 	// Create instance of the trajectory generator object.
 	boost::shared_ptr<trajectories::Trajectories> trajectoryGenerator =
-	    boost::make_shared<trajectories::Trajectories>(n);
+	    boost::make_shared<trajectories::Trajectories>(n, loopFreq);
 
 	while (ros::ok())
 	{
@@ -37,4 +41,5 @@ int main(int argc, char** argv)
 		loop_rate.sleep();
 	}
 
+	return 0;
 }

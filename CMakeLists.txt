@@ -8,12 +8,11 @@ set(CMAKE_CXX_FLAGS "-std=c++11")
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS
   roscpp
-  roscpp_nodewrap
-  geometry_msgs
-  nav_msgs
-  std_msgs
+  std_srvs
   tf
+  actionlib
   huskanypulator_msgs
+  mbzirc_mission2_msgs
 )
 
 find_package(Eigen3 REQUIRED)
@@ -24,15 +23,14 @@ find_package(Eigen3 REQUIRED)
 
 catkin_package(
   INCLUDE_DIRS include
-  LIBRARIES anypulator_controller
+  LIBRARIES trajectories
   CATKIN_DEPENDS 
     roscpp
-    roscpp_nodewrap
-    geometry_msgs
-    nav_msgs
-    std_msgs
+    std_srvs
     tf
+    actionlib
     huskanypulator_msgs
+    mbzirc_mission2_msgs
 )
 
 include_directories(
@@ -42,7 +40,7 @@ include_directories(
 )
 
 add_library(trajectories
-  src/trajectories_node.cpp
+  src/Trajectories.cpp
 )
 add_dependencies(trajectories
   ${catkin_EXPORTED_TARGETS}
@@ -52,9 +50,10 @@ target_link_libraries(trajectories
 )
 
 add_executable(trajectories_node
-  src/trajectories_node.cpp src/Trajectories.cpp 
+  src/trajectories_node.cpp
 ) 
 add_dependencies(trajectories_node
+  trajectories
   ${catkin_EXPORTED_TARGETS}
 )
 
