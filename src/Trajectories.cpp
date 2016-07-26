@@ -211,6 +211,7 @@ bool Trajectories::generateLineTrajectory(){
 		state.use_twist = false;
 		state.use_accel = false;
 		state.use_wrench = false;
+		state.mission_mode = huskanypulator_msgs::EEstate::MISSION_MODE_WRENCHAPPROACH;
 
 		state.pose.position.x = pos(0);
 		state.pose.position.y = pos(1);
@@ -298,6 +299,7 @@ bool Trajectories::generateLineStart(){
   state.use_twist = false;
   state.use_accel = false;
   state.use_wrench = false;
+  state.mission_mode = huskanypulator_msgs::EEstate::MISSION_MODE_WRENCHAPPROACH;
 
   state.pose.position.x = lineStart_(0);
   state.pose.position.y = lineStart_(1);
