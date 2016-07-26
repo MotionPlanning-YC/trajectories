@@ -17,7 +17,8 @@ Trajectories::Trajectories(ros::NodeHandle n, int loopFreq) :
   isGo_(false),
   doLoop_(false),
   index_(0),
-  pubFreq_(loopFreq){
+  pubFreq_(loopFreq),
+  missionMode_(huskanypulator_msgs::EEstate::MISSION_MODE_FREEMOTION){
 
 	readParameters();
 	initializeSubscribers();
@@ -137,9 +138,11 @@ bool Trajectories::goCircleCommand(std_srvs::Empty::Request &req,
   }
 
 	ROS_INFO("[Trajectories::goCircleCommand] Circle Trajectory Activated");
+	doLoop_ = true;
+	missionMode_ = huskanypulator_msgs::EEstate::MISSION_MODE_FREEMOTION;
 	generateCircleTrajectory();
 	isGo_ = true;
-	doLoop_ = true;
+
 
   return true;
 }
@@ -152,6 +155,7 @@ bool Trajectories::goLineCommand(std_srvs::Empty::Request &req,
   }
 	ROS_INFO("[Trajectories::goLineCommand] Line Trajectory Activated");
 	doLoop_ = true;
+	missionMode_ = huskanypulator_msgs::EEstate::MISSION_MODE_FREEMOTION;
 	generateLineTrajectory();
 	isGo_ = true;
 
@@ -166,6 +170,7 @@ bool Trajectories::goLineStart(std_srvs::Empty::Request &req,
   }
 	ROS_INFO("[Trajectories::goLineStart] Line Start Activated");
 	doLoop_ = false;
+	missionMode_ = huskanypulator_msgs::EEstate::MISSION_MODE_FREEMOTION;
 	generateLineStart();
 	isGo_ = true;
 
@@ -249,7 +254,7 @@ bool Trajectories::generateLineTrajectory(
 		state.use_twist = true;
 		state.use_accel = false;
 		state.use_wrench = false;
-		state.mission_mode = huskanypulator_msgs::EEstate::MISSION_MODE_WRENCHAPPROACH;
+		state.mission_mode = missionMode_;
 
 		state.pose.position.x = pos(0);
 		state.pose.position.y = pos(1);
@@ -339,7 +344,7 @@ bool Trajectories::generateLineStart(){
   state.use_twist = false;
   state.use_accel = false;
   state.use_wrench = false;
-  state.mission_mode = huskanypulator_msgs::EEstate::MISSION_MODE_WRENCHAPPROACH;
+  state.mission_mode = missionMode_;
 
   state.pose.position.x = lineStart_(0);
   state.pose.position.y = lineStart_(1);
@@ -408,6 +413,7 @@ void Trajectories::genTrajActionGoalCB(){
 
   //generate trajectory
   doLoop_ = false;
+  missionMode_ = goal.mission_mode;
   generateLineTrajectory(startPoint, endPoint, startQ, endQ, cmdFrameID);
 
   isGo_ = true;

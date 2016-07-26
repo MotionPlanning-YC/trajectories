@@ -103,6 +103,7 @@ class Trajectories {
 
   std::string frameID_;
   std::string eeFrameID_;
+  huskanypulator_msgs::EEstate::_mission_mode_type missionMode_;
 
   std::vector<huskanypulator_msgs::EEstate> trajectory_;
   int index_;
