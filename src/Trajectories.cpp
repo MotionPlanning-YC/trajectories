@@ -20,12 +20,14 @@ Trajectories::Trajectories(ros::NodeHandle n, int loopFreq) :
   pubFreq_(loopFreq),
   missionMode_(huskanypulator_msgs::EEstate::MISSION_MODE_FREEMOTION){
 
+  trajectory_.clear();
+
 	readParameters();
 	initializeSubscribers();
 	initializePublishers();
 	initializeServices();
 
-	trajectory_.clear();
+	ROS_INFO("[Trajectories] Init done.");
 }
 
 Trajectories::~Trajectories(){}
@@ -55,20 +57,22 @@ void Trajectories::initializeSubscribers() {
 
 void Trajectories::initializePublishers() {
 	ROS_INFO("[Trajectories::initializePublishers] initializing publishers...");
-	CommandPublisher_ = n_.advertise<huskanypulator_msgs::EEstate>("/state_command", 100);
-	TrajectoryPosePublisher_ = n_.advertise<geometry_msgs::PoseStamped>("/trajectory_position", 100);
-	TrajectoryTwistPublisher_ = n_.advertise<geometry_msgs::TwistStamped>("/trajectory_velocity", 100);
+	CommandPublisher_ = n_.advertise<huskanypulator_msgs::EEstate>(commandPublisherTopic_, 10);
+	ROS_INFO_STREAM("[Trajectories::initializePublishers] Publishing EE state commands on topic "
+	    << commandPublisherTopic_);
+	TrajectoryPosePublisher_ = n_.advertise<geometry_msgs::PoseStamped>("/trajectory_position", 10);
+	TrajectoryTwistPublisher_ = n_.advertise<geometry_msgs::TwistStamped>("/trajectory_velocity", 10);
 }
 
 void Trajectories::initializeServices() {
 	ROS_INFO("[Trajectories::initializeServices] initializing services...");
-	goCircle_ = n_.advertiseService("/trajectories/circle/go", &Trajectories::goCircleCommand, this);
-	goLine_ = n_.advertiseService("/trajectories/line/go", &Trajectories::goLineCommand, this);
-	startLine_ = n_.advertiseService("/trajectories/line/start", &Trajectories::goLineStart, this);
-	stop_ = n_.advertiseService("/trajectories/stop", &Trajectories::stopCommand, this);
+	goCircle_ = n_.advertiseService("circle/go", &Trajectories::goCircleCommand, this);
+	goLine_ = n_.advertiseService("line/go", &Trajectories::goLineCommand, this);
+	startLine_ = n_.advertiseService("line/start", &Trajectories::goLineStart, this);
+	stop_ = n_.advertiseService("stop", &Trajectories::stopCommand, this);
 
 	genTrajActionServer_ = boost::make_shared<actionlib::SimpleActionServer<mbzirc_mission2_msgs::MoveEEAction>>(
-	    n_,"genEETrajectory",false);
+	    n_,actionServerName_,false);
 	genTrajActionServer_->registerGoalCallback(boost::bind(&Trajectories::genTrajActionGoalCB, this));
 	genTrajActionServer_->registerPreemptCallback(boost::bind(&Trajectories::genTrajActionPreemptCB, this));
 	genTrajActionServer_->start();
@@ -80,8 +84,8 @@ bool Trajectories::readParameters() {
 	/*
 	 * Frame IDs for tf
 	 */
-	n_.param<std::string>("trajectories/frame_ID", frameID_, "map");
-	n_.param<std::string>("trajectories/EE_frame_ID", eeFrameID_, "HAND");
+	n_.param<std::string>("frame_ID", frameID_, "map");
+	n_.param<std::string>("EE_frame_ID", eeFrameID_, "HAND");
 	ROS_INFO_STREAM("[Trajectories::readParameters] frameID = " << frameID_);
   ROS_INFO_STREAM("[Trajectories::readParameters] eeFrameID_ = " << eeFrameID_);
 
@@ -90,42 +94,48 @@ bool Trajectories::readParameters() {
 	 */
 	circleCenter_ = Eigen::Vector3d::Zero();
 	circleNormal_ = Eigen::Vector3d::Zero();
-	n_.param<double>("trajectories/circle/center/x", circleCenter_(0), 0.3);
-	n_.param<double>("trajectories/circle/center/y", circleCenter_(1), 0.0);
-	n_.param<double>("trajectories/circle/center/z", circleCenter_(2), 0.3);
-	n_.param<double>("trajectories/circle/radius", circleRadius_, 0.2);
-	n_.param<double>("trajectories/circle/normal_vector/x", circleNormal_(0), 0.0);
-	n_.param<double>("trajectories/circle/normal_vector/y", circleNormal_(1), 0.1);
-	n_.param<double>("trajectories/circle/normal_vector/z", circleNormal_(2), 0.0);
+	n_.param<double>("circle/center/x", circleCenter_(0), 0.3);
+	n_.param<double>("circle/center/y", circleCenter_(1), 0.0);
+	n_.param<double>("circle/center/z", circleCenter_(2), 0.3);
+	n_.param<double>("circle/radius", circleRadius_, 0.2);
+	n_.param<double>("circle/normal_vector/x", circleNormal_(0), 0.0);
+	n_.param<double>("circle/normal_vector/y", circleNormal_(1), 0.1);
+	n_.param<double>("circle/normal_vector/z", circleNormal_(2), 0.0);
 
 	/*
 	 * Line Parameters
 	 */
 	lineStart_ = Eigen::Vector3d::Zero();
 	lineEnd_ = Eigen::Vector3d::Zero();
-	n_.param<double>("trajectories/line/start/x", lineStart_(0), 0.3);
-	n_.param<double>("trajectories/line/start/y", lineStart_(1), -0.2);
-	n_.param<double>("trajectories/line/start/z", lineStart_(2), 0.3);
-	n_.param<double>("trajectories/line/end/x", lineEnd_(0), 0.3);
-	n_.param<double>("trajectories/line/end/y", lineEnd_(1), 0.2);
-	n_.param<double>("trajectories/line/end/z", lineEnd_(2), 0.3);
+	n_.param<double>("line/start/x", lineStart_(0), 0.3);
+	n_.param<double>("line/start/y", lineStart_(1), -0.2);
+	n_.param<double>("line/start/z", lineStart_(2), 0.3);
+	n_.param<double>("line/end/x", lineEnd_(0), 0.3);
+	n_.param<double>("line/end/y", lineEnd_(1), 0.2);
+	n_.param<double>("line/end/z", lineEnd_(2), 0.3);
 
 	/*
 	 * Velocity and Acceleration
 	 */
-	n_.param<double>("trajectories/max_velocity", maxVel_, 0.2);
-	n_.param<double>("trajectories/max_acceleration", maxAccel_, 0.2);
+	n_.param<double>("max_velocity", maxVel_, 0.2);
+	n_.param<double>("max_acceleration", maxAccel_, 0.2);
 	ROS_INFO_STREAM("[Trajectories::readParameters] Max velocity = " << maxVel_);
 	ROS_INFO_STREAM("[Trajectories::readParameters] Max acceleration = " << maxAccel_);
 
 	/*
 	 * Orientation
 	 */
-	n_.param<double>("trajectories/orientation/w", orientationQ_.w(), 1.0);
-	n_.param<double>("trajectories/orientation/x", orientationQ_.x(), 0.0);
-	n_.param<double>("trajectories/orientation/y", orientationQ_.y(), 0.0);
-	n_.param<double>("trajectories/orientation/z", orientationQ_.z(), 0.0);
+	n_.param<double>("orientation/w", orientationQ_.w(), 1.0);
+	n_.param<double>("orientation/x", orientationQ_.x(), 0.0);
+	n_.param<double>("orientation/y", orientationQ_.y(), 0.0);
+	n_.param<double>("orientation/z", orientationQ_.z(), 0.0);
 	ROS_INFO_STREAM("[Trajectories::readParameters] Orientation = " << orientationQ_.vec().transpose());
+
+	/*
+	 * Topic names
+	 */
+	n_.param<std::string>("commandPublisherTopic", commandPublisherTopic_, "/ee_state_command");
+	n_.param<std::string>("actionServerName", actionServerName_, "/genEETrajectory");
 
 	return true;
 }

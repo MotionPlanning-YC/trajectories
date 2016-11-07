@@ -1,40 +1,42 @@
-trajectories:
-  # publishing frequency
-  freq: 200
+# publishing
+freq: 200 # publishing frequency
+commandPublisherTopic: /huskanypulator/highlevel_controller/ee_state_command
+actionServerName: /genEETrajectory
 
-  # Circle parameters
-  circle:
-    center: 
-      x: 0.3
-      y: 0.0
-      z: 0.3
-    radius: 0.2
-    normal_vector:
-      x: 1.0
-      y: 0.0
-      z: 0.0
 
-  # Line parameters
-  line: 
-    start:
-      x: 0.2
-      y: 0.2
-      z: -0.1
-    end:
-      x: 0.2
-      y: -0.1
-      z: -0.2
-      
-  max_velocity: 0.3
-  max_acceleration: 0.2
-  frame_ID: panel_link
-  
-  # Orientation of endeffector
-  orientation:
-    w: 0.0
-    x: 0.0
+# Circle parameters
+circle:
+  center: 
+    x: 0.3
     y: 0.0
-    z: 1.0
+    z: 0.3
+  radius: 0.2
+  normal_vector:
+    x: 1.0
+    y: 0.0
+    z: 0.0
 
-  # Frame id of the endeffector
-  EE_frame_ID: ARM1_HAND
+# Line parameters
+line: 
+  start:
+    x: 0.0
+    y: 0.75
+    z: 0.57
+  end:
+    x: 0.0
+    y: 0.85
+    z: 0.57
+    
+max_velocity: 0.15
+max_acceleration: 0.15
+frame_ID: base_link
+
+# Orientation of endeffector
+orientation:
+  w: 0.70710678
+  x: 0.0
+  y: 0.0
+  z: 0.70710678
+
+# Frame id of the endeffector
+EE_frame_ID: TOOL

@@ -15,11 +15,11 @@ int main(int argc, char** argv)
 {
 	// Initialize node.
 	ros::init(argc, argv, "trajectory_node");
-	ros::NodeHandle n;
+	ros::NodeHandle nh("~");
 
 	// Read params
 	int loopFreq;
-	if(!n.getParam("trajectories/freq", loopFreq)){
+	if(!nh.getParam("freq", loopFreq)){
 	  ROS_ERROR("[Trajectories] Could not retrieve update frequency. Exiting.");
 	  return 1;
 	}
@@ -29,7 +29,7 @@ int main(int argc, char** argv)
 
 	// Create instance of the trajectory generator object.
 	boost::shared_ptr<trajectories::Trajectories> trajectoryGenerator =
-	    boost::make_shared<trajectories::Trajectories>(n, loopFreq);
+	    boost::make_shared<trajectories::Trajectories>(nh, loopFreq);
 
 	while (ros::ok())
 	{
