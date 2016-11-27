@@ -29,6 +29,7 @@
 // std library
 #include <string>
 #include <vector>
+#include <atomic>
 
 
 
@@ -40,13 +41,15 @@ namespace trajectories {
 
 class Trajectories {
  public:
-	Trajectories(ros::NodeHandle n, int loopFreq);
+	Trajectories(const ros::NodeHandle& n, const int loopFreq);
   virtual ~Trajectories();
 
   bool sendTrajectory();
   bool isGoReceived() const {return isGo_;}
 
  private:
+
+  void init();
 
   bool readParameters();
 
@@ -58,14 +61,16 @@ class Trajectories {
   bool goLineCommand(std_srvs::Empty::Request &req, std_srvs::Empty::Response &res);
   bool goLineStart(std_srvs::Empty::Request &req, std_srvs::Empty::Response &res);
   bool stopCommand(std_srvs::Empty::Request &req, std_srvs::Empty::Response &res);
+  bool resetCommand(std_srvs::Empty::Request &req, std_srvs::Empty::Response &res);
 
   bool generateCircleTrajectory();
   bool generateLineTrajectory(
-      Eigen::Vector3d startPoint, Eigen::Vector3d endPoint,
-      Eigen::Quaternion<double> startQ, Eigen::Quaternion<double> endQ,
-      std::string frameID);
+      const Eigen::Vector3d& startPoint, const Eigen::Vector3d& endPoint,
+      const Eigen::Quaternion<double>& startQ, const Eigen::Quaternion<double>& endQ,
+      const std::string& frameID);
   bool generateLineTrajectory() {return generateLineTrajectory(lineStart_,lineEnd_,orientationQ_,orientationQ_,frameID_);}
   bool generateLineStart();
+  void publishTargetMsg(const huskanypulator_msgs::EEstate& msg);
 
   void joyVelCmdCB(const geometry_msgs::TwistStampedConstPtr& msg);
 
@@ -87,6 +92,7 @@ class Trajectories {
   ros::ServiceServer goLine_;
   ros::ServiceServer startLine_;
   ros::ServiceServer stop_;
+  ros::ServiceServer reset_;
   boost::shared_ptr<actionlib::SimpleActionServer<mbzirc_mission2_msgs::MoveEEAction>> genTrajActionServer_;
 
   // Subscriber
@@ -94,8 +100,8 @@ class Trajectories {
 
   ros::NodeHandle n_;
 
-  bool isGo_; //if true, trajectory points get published
-  bool doLoop_; //if true, trajectory gets played in a loop
+  std::atomic<bool> isGo_; //if true, trajectory points get published
+  std::atomic<bool> doLoop_; //if true, trajectory gets played in a loop
   double pubFreq_;
 
   Eigen::Vector3d circleCenter_, circleNormal_;
@@ -106,6 +112,9 @@ class Trajectories {
 
   Eigen::Quaternion<double> orientationQ_;
 
+  double joy_stepLength;
+  double joy_velMin;
+
   std::string frameID_;
   std::string eeFrameID_;
   std::string commandPublisherTopic_;
@@ -114,6 +123,8 @@ class Trajectories {
 
   std::vector<huskanypulator_msgs::EEstate> trajectory_;
   int index_;
+
+  huskanypulator_msgs::EEstate target_msg_prev_;
 };
 
 } /* namespace trajectories */

@@ -12,32 +12,44 @@
 
 namespace trajectories {
 
-Trajectories::Trajectories(ros::NodeHandle n, int loopFreq) :
+Trajectories::Trajectories(const ros::NodeHandle& n, const int loopFreq) :
   n_(n),
   isGo_(false),
   doLoop_(false),
   index_(0),
   pubFreq_(loopFreq),
-  missionMode_(huskanypulator_msgs::EEstate::MISSION_MODE_FREEMOTION){
+  missionMode_(huskanypulator_msgs::EEstate::MISSION_MODE_FREEMOTION),
+  joy_stepLength(0.0),
+  joy_velMin(0.0){
 
-  trajectory_.clear();
-
-	readParameters();
-	initializeSubscribers();
-	initializePublishers();
-	initializeServices();
-
-	ROS_INFO("[Trajectories] Init done.");
+  init();
+  initializeSubscribers();
+  initializePublishers();
+  initializeServices();
 }
 
 Trajectories::~Trajectories(){}
+
+void Trajectories::init(){
+  isGo_ = false;
+  doLoop_ = false;
+  index_ = 0;
+  missionMode_ = huskanypulator_msgs::EEstate::MISSION_MODE_FREEMOTION;
+  trajectory_.clear();
+  target_msg_prev_.header.stamp = ros::Time(0.0);
+
+  readParameters();
+
+  ROS_INFO("[Trajectories] Init done.");
+}
+
 
 bool Trajectories::sendTrajectory(){
   //this method gets called at the specified loop rate if isGo_ is true.
 
   //publish trajectory point at current index
   trajectory_.at(index_).header.stamp = ros::Time::now();//update stamp to allow plotting
-	CommandPublisher_.publish(trajectory_.at(index_));
+  publishTargetMsg(trajectory_.at(index_));
 
 	if(index_+1 < trajectory_.size()){
 	  index_++; //increment index as long as trajectory has further points
@@ -53,7 +65,7 @@ bool Trajectories::sendTrajectory(){
 void Trajectories::initializeSubscribers() {
   ROS_INFO("[Trajectories::initializeSubscribers] initializing subscribers...");
   tfListener_.reset(new tf::TransformListener());
-  joystickVelSubscriber_ = n_.subscribe("/joy_manager/command_velocity", 10, &Trajectories::joyVelCmdCB, this);
+  joystickVelSubscriber_ = n_.subscribe("/joy_manager/command_velocity", 1, &Trajectories::joyVelCmdCB, this);
 }
 
 void Trajectories::initializePublishers() {
@@ -67,10 +79,11 @@ void Trajectories::initializePublishers() {
 
 void Trajectories::initializeServices() {
 	ROS_INFO("[Trajectories::initializeServices] initializing services...");
-	goCircle_ = n_.advertiseService("circle/go", &Trajectories::goCircleCommand, this);
+//	goCircle_ = n_.advertiseService("circle/go", &Trajectories::goCircleCommand, this);
 	goLine_ = n_.advertiseService("line/go", &Trajectories::goLineCommand, this);
 	startLine_ = n_.advertiseService("line/start", &Trajectories::goLineStart, this);
 	stop_ = n_.advertiseService("stop", &Trajectories::stopCommand, this);
+	reset_ = n_.advertiseService("reset", &Trajectories::resetCommand, this);
 
 	genTrajActionServer_ = boost::make_shared<actionlib::SimpleActionServer<mbzirc_mission2_msgs::MoveEEAction>>(
 	    n_,actionServerName_,false);
@@ -138,6 +151,12 @@ bool Trajectories::readParameters() {
 	n_.param<std::string>("commandPublisherTopic", commandPublisherTopic_, "/ee_state_command");
 	n_.param<std::string>("actionServerName", actionServerName_, "/genEETrajectory");
 
+	/*
+	 * msc
+	 */
+	n_.param<double>("joystick/step_length_gain", joy_stepLength, 0.05);
+	n_.param<double>("joystick/vel_min", joy_velMin, 0.0);
+
 	return true;
 }
 
@@ -153,7 +172,6 @@ bool Trajectories::goCircleCommand(std_srvs::Empty::Request &req,
 	missionMode_ = huskanypulator_msgs::EEstate::MISSION_MODE_FREEMOTION;
 	generateCircleTrajectory();
 	isGo_ = true;
-
 
   return true;
 }
@@ -189,12 +207,25 @@ bool Trajectories::goLineStart(std_srvs::Empty::Request &req,
 }
 
 bool Trajectories::stopCommand(std_srvs::Empty::Request &req,
-										 std_srvs::Empty::Response &res){
+                               std_srvs::Empty::Response &res){
 	ROS_INFO("[Trajectories::stopCommand] Stop Command Received");
 	isGo_ = false;
 	doLoop_ = false;
+	if(genTrajActionServer_->isActive()){
+	  genTrajActionServer_->setAborted();
+	}
 	trajectory_.clear();
 
+  return true;
+}
+
+bool Trajectories::resetCommand(std_srvs::Empty::Request &req,
+                                std_srvs::Empty::Response &res){
+  if(genTrajActionServer_->isActive()){
+    genTrajActionServer_->setAborted();
+  }
+  init();
+  ROS_INFO("[Trajectories::resetCommand] Reset done.");
   return true;
 }
 
@@ -207,9 +238,9 @@ bool Trajectories::generateCircleTrajectory(){
 }
 
 bool Trajectories::generateLineTrajectory(
-    Eigen::Vector3d startPoint, Eigen::Vector3d endPoint,
-    Eigen::Quaternion<double> startQ, Eigen::Quaternion<double> endQ,
-    std::string frameID){
+    const Eigen::Vector3d& startPoint, const Eigen::Vector3d& endPoint,
+    const Eigen::Quaternion<double>& startQ, const Eigen::Quaternion<double>& endQ,
+    const std::string& frameID){
 
 	ROS_INFO("[Trajectories::generateLineTrajectory] Generating a line trajectory");
 
@@ -219,8 +250,8 @@ bool Trajectories::generateLineTrajectory(
 	trajectory_.clear();
 	index_ = 0;
 
-	double dt = 1.0 / pubFreq_;
-	double distance = (endPoint - startPoint).norm();
+	const double dt = 1.0 / pubFreq_;
+	const double distance = (endPoint - startPoint).norm();
 	double t = 0.0;
 	Eigen::Vector3d unitDirection = (endPoint - startPoint).normalized();
 	Eigen::Vector3d pos = startPoint;
@@ -303,7 +334,7 @@ bool Trajectories::generateLineTrajectory(
 
 	if(doLoop_){
     /*
-     * Add reverse trajectory to start point
+     * Add reverse trajectory back to start point
      */
     int size = trajectory_.size();
     for (int i = 0; i < size; i++){
@@ -325,9 +356,8 @@ bool Trajectories::generateLineTrajectory(
 
       trajectory_.push_back(state);
     }
-	}
-
-	return true;
+  }
+  return true;
 }
 
 bool Trajectories::fifthOrderPolynomial(const double &t, const double &Tf, const double &d, double &dpos, double &vel, double &accel){
@@ -343,83 +373,71 @@ bool Trajectories::fifthOrderPolynomial(const double &t, const double &Tf, const
 }
 
 bool Trajectories::generateLineStart(){
-	ROS_INFO("[Trajectories::generateLineStart] Going to line start position");
+  ROS_INFO("[Trajectories::generateLineStart] Going to line start position");
 
-	trajectory_.clear();
-	index_ = 0;
+  //find start pose (current EE pose)
+  tf::StampedTransform T_cmdFrame_ee_start;
+  ros::Time now = ros::Time::now();
+  try {
+    tfListener_->waitForTransform(frameID_, eeFrameID_, now, ros::Duration(0.2));
+    tfListener_->lookupTransform(frameID_, eeFrameID_, now, T_cmdFrame_ee_start);
+  }catch (tf::TransformException& ex) {
+    ROS_WARN("[Trajectories::genTrajActionGoalCB] Unable to get the requested transform. %s", ex.what());
+    return false;
+  }
 
-	huskanypulator_msgs::EEstate state;
+  const Eigen::Vector3d startPoint(T_cmdFrame_ee_start.getOrigin().x(),
+                                   T_cmdFrame_ee_start.getOrigin().y(),
+                                   T_cmdFrame_ee_start.getOrigin().z());
+  const Eigen::Quaternion<double> startQ(T_cmdFrame_ee_start.getRotation().w(),
+                                         T_cmdFrame_ee_start.getRotation().x(),
+                                         T_cmdFrame_ee_start.getRotation().y(),
+                                         T_cmdFrame_ee_start.getRotation().z());
+  const Eigen::Vector3d endPoint(lineStart_(0),
+                                 lineStart_(1),
+                                 lineStart_(2));
+  const Eigen::Quaternion<double> endQ(orientationQ_.w(),
+                                       orientationQ_.x(),
+                                       orientationQ_.y(),
+                                       orientationQ_.z());
 
-	state.header.frame_id = frameID_;
-  state.use_pose = true;
-  state.use_twist = false;
-  state.use_accel = false;
-  state.use_wrench = false;
-  state.mission_mode = missionMode_;
 
-  state.pose.position.x = lineStart_(0);
-  state.pose.position.y = lineStart_(1);
-  state.pose.position.z = lineStart_(2);
-  state.pose.orientation.w = orientationQ_.w();
-  state.pose.orientation.x = orientationQ_.x();
-  state.pose.orientation.y = orientationQ_.y();
-  state.pose.orientation.z = orientationQ_.z();
-
-  state.twist.linear.x = 0.0;
-  state.twist.linear.y = 0.0;
-  state.twist.linear.z = 0.0;
-  state.twist.angular.x = 0.0;
-  state.twist.angular.y = 0.0;
-  state.twist.angular.z = 0.0;
-
-  state.accel.linear.x = 0.0;
-  state.accel.linear.y = 0.0;
-  state.accel.linear.z = 0.0;
-  state.accel.angular.x = 0.0;
-  state.accel.angular.y = 0.0;
-  state.accel.angular.z = 0.0;
-
-  state.wrench.force.x = 0.0;
-  state.wrench.force.y = 0.0;
-  state.wrench.force.z = 0.0;
-  state.wrench.torque.x = 0.0;
-  state.wrench.torque.y = 0.0;
-  state.wrench.torque.z = 0.0;
-
-	trajectory_.push_back(state);
-
-	return true;
+  //generate trajectory
+  generateLineTrajectory(startPoint, endPoint, startQ, endQ, frameID_);
+  return true;
 }
 
 void Trajectories::genTrajActionGoalCB(){
   huskanypulator_msgs::EEstate goal = genTrajActionServer_->acceptNewGoal()->goalPose;
 
-  std::string cmdFrameID = goal.header.frame_id;
+  const std::string cmdFrameID = goal.header.frame_id;
 
   //find start pose (current EE pose)
   tf::StampedTransform T_cmdFrame_ee_start;
+  ros::Time now = ros::Time::now();
   try {
-    tfListener_->lookupTransform(cmdFrameID, eeFrameID_, ros::Time(0), T_cmdFrame_ee_start);
+    tfListener_->waitForTransform(cmdFrameID, eeFrameID_, now, ros::Duration(0.2));
+    tfListener_->lookupTransform(cmdFrameID, eeFrameID_, now, T_cmdFrame_ee_start);
   }catch (tf::TransformException& ex) {
     ROS_WARN("[Trajectories::genTrajActionGoalCB] Unable to get the requested transform. %s", ex.what());
     genTrajActionServer_->setAborted();
     return;
   }
 
-  Eigen::Vector3d startPoint(T_cmdFrame_ee_start.getOrigin().x(),
-                             T_cmdFrame_ee_start.getOrigin().y(),
-                             T_cmdFrame_ee_start.getOrigin().z());
-  Eigen::Quaternion<double> startQ(T_cmdFrame_ee_start.getRotation().w(),
-                                   T_cmdFrame_ee_start.getRotation().x(),
-                                   T_cmdFrame_ee_start.getRotation().y(),
-                                   T_cmdFrame_ee_start.getRotation().z());
-  Eigen::Vector3d endPoint(goal.pose.position.x,
-                           goal.pose.position.y,
-                           goal.pose.position.z);
-  Eigen::Quaternion<double> endQ(goal.pose.orientation.w,
-                                 goal.pose.orientation.x,
-                                 goal.pose.orientation.y,
-                                 goal.pose.orientation.z);
+  const Eigen::Vector3d startPoint(T_cmdFrame_ee_start.getOrigin().x(),
+                                   T_cmdFrame_ee_start.getOrigin().y(),
+                                   T_cmdFrame_ee_start.getOrigin().z());
+  const Eigen::Quaternion<double> startQ(T_cmdFrame_ee_start.getRotation().w(),
+                                         T_cmdFrame_ee_start.getRotation().x(),
+                                         T_cmdFrame_ee_start.getRotation().y(),
+                                         T_cmdFrame_ee_start.getRotation().z());
+  const Eigen::Vector3d endPoint(goal.pose.position.x,
+                                 goal.pose.position.y,
+                                 goal.pose.position.z);
+  const Eigen::Quaternion<double> endQ(goal.pose.orientation.w,
+                                       goal.pose.orientation.x,
+                                       goal.pose.orientation.y,
+                                       goal.pose.orientation.z);
 
 
   //generate trajectory
@@ -438,70 +456,86 @@ void Trajectories::genTrajActionPreemptCB(){
 
 void Trajectories::joyVelCmdCB(const geometry_msgs::TwistStampedConstPtr& msg){
 
-  //safety: disable everything - use only joystick for control now
-  isGo_ = false;
-  if(genTrajActionServer_->isActive())
-    genTrajActionServer_->setPreempted();
-
-  static ros::Time lastJoyVelCmd = msg->header.stamp; //first time initialization
-  double dt = (msg->header.stamp - lastJoyVelCmd).toSec();
-
-  const std::string cmdFrameID = "base_link"; //frame in which vel cmds are interpreted
-
-  //find start pose (current EE pose) in same frame as velocity command msg
-  tf::StampedTransform T_cmdFrame_ee;
-  try {
-    tfListener_->waitForTransform(cmdFrameID, eeFrameID_, msg->header.stamp, ros::Duration(0.2));
-    tfListener_->lookupTransform( cmdFrameID, eeFrameID_, msg->header.stamp, T_cmdFrame_ee);
-  }catch (tf::TransformException& ex) {
-    ROS_WARN("[Trajectories::joyVelCmdCB] Unable to get the requested transform. %s", ex.what());
+  //check if joystick was only marginally touched
+  const Eigen::Vector3d twistLinear(msg->twist.linear.x,
+                                    msg->twist.linear.y,
+                                    msg->twist.linear.z);
+  if(twistLinear.norm() < joy_velMin){
     return;
   }
 
+
+  //safety: disable everything - use only joystick for control now
+  isGo_ = false;
+  if(genTrajActionServer_->isActive())
+    genTrajActionServer_->setAborted();
+
+  const std::string cmdFrameID = "base_link"; //frame in which vel cmds are interpreted
+
+
+  if(target_msg_prev_.header.stamp == ros::Time(0.0)){
+    //find start pose (current EE pose) in same frame as velocity command msg
+    tf::StampedTransform T_cmdFrame_ee;
+    ros::Time now = ros::Time::now();
+    try {
+      tfListener_->waitForTransform(cmdFrameID, eeFrameID_, now, ros::Duration(0.2));
+      tfListener_->lookupTransform( cmdFrameID, eeFrameID_, now, T_cmdFrame_ee);
+    }catch (tf::TransformException& ex) {
+      ROS_WARN("[Trajectories::joyVelCmdCB] Unable to get the requested transform. %s", ex.what());
+      return;
+    }
+    target_msg_prev_.pose.position.x = T_cmdFrame_ee.getOrigin().x() + msg->twist.linear.x * joy_stepLength;
+    target_msg_prev_.pose.position.y = T_cmdFrame_ee.getOrigin().y() + msg->twist.linear.y * joy_stepLength;
+    target_msg_prev_.pose.position.z = T_cmdFrame_ee.getOrigin().z() + msg->twist.linear.z * joy_stepLength;
+    target_msg_prev_.pose.orientation.w = T_cmdFrame_ee.getRotation().w();
+    target_msg_prev_.pose.orientation.x = T_cmdFrame_ee.getRotation().x();
+    target_msg_prev_.pose.orientation.y = T_cmdFrame_ee.getRotation().y();
+    target_msg_prev_.pose.orientation.z = T_cmdFrame_ee.getRotation().z();
+  }
+
   //construct new target point and publish
-  huskanypulator_msgs::EEstatePtr target_msg = boost::make_shared<huskanypulator_msgs::EEstate>();
+  huskanypulator_msgs::EEstate target_msg;
 
-  target_msg->header.frame_id = cmdFrameID;
-  target_msg->header.stamp = msg->header.stamp;
-  target_msg->use_pose = true;
-  target_msg->use_twist = false;
-  target_msg->use_accel = false;
-  target_msg->use_wrench = false;
-  target_msg->mission_mode = huskanypulator_msgs::EEstate::MISSION_MODE_FREEMOTION;
+  target_msg.header.frame_id = cmdFrameID;
+  target_msg.header.stamp = msg->header.stamp;
+  target_msg.use_pose = true;
+  target_msg.use_twist = false;
+  target_msg.use_accel = false;
+  target_msg.use_wrench = false;
+  target_msg.mission_mode = huskanypulator_msgs::EEstate::MISSION_MODE_FREEMOTION;
 
-  target_msg->pose.position.x = T_cmdFrame_ee.getOrigin().x() + msg->twist.linear.x * dt;
-  target_msg->pose.position.y = T_cmdFrame_ee.getOrigin().y() + msg->twist.linear.y * dt;
-  target_msg->pose.position.z = T_cmdFrame_ee.getOrigin().z() + msg->twist.linear.z * dt;
-  target_msg->pose.orientation.w = T_cmdFrame_ee.getRotation().w();
-  target_msg->pose.orientation.x = T_cmdFrame_ee.getRotation().x();
-  target_msg->pose.orientation.y = T_cmdFrame_ee.getRotation().y();
-  target_msg->pose.orientation.z = T_cmdFrame_ee.getRotation().z();
+  target_msg.pose.position.x = target_msg_prev_.pose.position.x + msg->twist.linear.x * joy_stepLength;
+  target_msg.pose.position.y = target_msg_prev_.pose.position.y + msg->twist.linear.y * joy_stepLength;
+  target_msg.pose.position.z = target_msg_prev_.pose.position.z + msg->twist.linear.z * joy_stepLength;
+  target_msg.pose.orientation = target_msg_prev_.pose.orientation;
 
-  target_msg->twist.linear.x = 0.0;
-  target_msg->twist.linear.y = 0.0;
-  target_msg->twist.linear.z = 0.0;
-  target_msg->twist.angular.x = 0.0;
-  target_msg->twist.angular.y = 0.0;
-  target_msg->twist.angular.z = 0.0;
+  target_msg.twist.linear.x = 0.0;
+  target_msg.twist.linear.y = 0.0;
+  target_msg.twist.linear.z = 0.0;
+  target_msg.twist.angular.x = 0.0;
+  target_msg.twist.angular.y = 0.0;
+  target_msg.twist.angular.z = 0.0;
 
-  target_msg->accel.linear.x = 0.0;
-  target_msg->accel.linear.y = 0.0;
-  target_msg->accel.linear.z = 0.0;
-  target_msg->accel.angular.x = 0.0;
-  target_msg->accel.angular.y = 0.0;
-  target_msg->accel.angular.z = 0.0;
+  target_msg.accel.linear.x = 0.0;
+  target_msg.accel.linear.y = 0.0;
+  target_msg.accel.linear.z = 0.0;
+  target_msg.accel.angular.x = 0.0;
+  target_msg.accel.angular.y = 0.0;
+  target_msg.accel.angular.z = 0.0;
 
-  target_msg->wrench.force.x = 0.0;
-  target_msg->wrench.force.y = 0.0;
-  target_msg->wrench.force.z = 0.0;
-  target_msg->wrench.torque.x = 0.0;
-  target_msg->wrench.torque.y = 0.0;
-  target_msg->wrench.torque.z = 0.0;
+  target_msg.wrench.force.x = 0.0;
+  target_msg.wrench.force.y = 0.0;
+  target_msg.wrench.force.z = 0.0;
+  target_msg.wrench.torque.x = 0.0;
+  target_msg.wrench.torque.y = 0.0;
+  target_msg.wrench.torque.z = 0.0;
 
+  publishTargetMsg(target_msg);
+}
 
-  CommandPublisher_.publish(target_msg);
-
-  lastJoyVelCmd = msg->header.stamp; // update for next callback
+void Trajectories::publishTargetMsg(const huskanypulator_msgs::EEstate& msg) {
+  CommandPublisher_.publish(msg);
+  target_msg_prev_ = msg;
 }
 
 } /* namespace trajectories */
