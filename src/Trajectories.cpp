@@ -427,18 +427,20 @@ void Trajectories::genTrajActionGoalCB(){
   const Eigen::Vector3d startPoint(T_cmdFrame_ee_start.getOrigin().x(),
                                    T_cmdFrame_ee_start.getOrigin().y(),
                                    T_cmdFrame_ee_start.getOrigin().z());
-  const Eigen::Quaternion<double> startQ(T_cmdFrame_ee_start.getRotation().w(),
+  Eigen::Quaternion<double> startQ(T_cmdFrame_ee_start.getRotation().w(),
                                          T_cmdFrame_ee_start.getRotation().x(),
                                          T_cmdFrame_ee_start.getRotation().y(),
                                          T_cmdFrame_ee_start.getRotation().z());
   const Eigen::Vector3d endPoint(goal.pose.position.x,
                                  goal.pose.position.y,
                                  goal.pose.position.z);
-  const Eigen::Quaternion<double> endQ(goal.pose.orientation.w,
+  Eigen::Quaternion<double> endQ(goal.pose.orientation.w,
                                        goal.pose.orientation.x,
                                        goal.pose.orientation.y,
                                        goal.pose.orientation.z);
 
+  startQ.normalize();
+  endQ.normalize();
 
   //generate trajectory
   doLoop_ = false;
