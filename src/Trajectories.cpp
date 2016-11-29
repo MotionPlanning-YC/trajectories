@@ -287,7 +287,7 @@ bool Trajectories::generateLineTrajectory(
 		pos = startPoint + unitDirection * dposMagn;
 		vel = unitDirection * velMagn;
 		acc = unitDirection * accMagn;
-		rot = startQ.slerp(dposMagn, endQ);
+		rot = startQ.slerp(dposMagn/distance, endQ);
 
 		huskanypulator_msgs::EEstate state;
 
@@ -408,6 +408,12 @@ bool Trajectories::generateLineStart(){
 }
 
 void Trajectories::genTrajActionGoalCB(){
+  ROS_INFO("[Trajectories::genTrajActionGoalCB] Received new goal.");
+  if(genTrajActionServer_->isActive()){
+    genTrajActionServer_->setAborted();
+    ROS_INFO("[Trajectories::genTrajActionGoalCB] Old goal was not done.");
+  }
+
   huskanypulator_msgs::EEstate goal = genTrajActionServer_->acceptNewGoal()->goalPose;
 
   const std::string cmdFrameID = goal.header.frame_id;
@@ -428,16 +434,16 @@ void Trajectories::genTrajActionGoalCB(){
                                    T_cmdFrame_ee_start.getOrigin().y(),
                                    T_cmdFrame_ee_start.getOrigin().z());
   Eigen::Quaternion<double> startQ(T_cmdFrame_ee_start.getRotation().w(),
-                                         T_cmdFrame_ee_start.getRotation().x(),
-                                         T_cmdFrame_ee_start.getRotation().y(),
-                                         T_cmdFrame_ee_start.getRotation().z());
+                                   T_cmdFrame_ee_start.getRotation().x(),
+                                   T_cmdFrame_ee_start.getRotation().y(),
+                                   T_cmdFrame_ee_start.getRotation().z());
   const Eigen::Vector3d endPoint(goal.pose.position.x,
                                  goal.pose.position.y,
                                  goal.pose.position.z);
   Eigen::Quaternion<double> endQ(goal.pose.orientation.w,
-                                       goal.pose.orientation.x,
-                                       goal.pose.orientation.y,
-                                       goal.pose.orientation.z);
+                                 goal.pose.orientation.x,
+                                 goal.pose.orientation.y,
+                                 goal.pose.orientation.z);
 
   startQ.normalize();
   endQ.normalize();
