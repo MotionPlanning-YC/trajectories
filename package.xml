@@ -14,6 +14,7 @@
 
   <depend>std_srvs</depend>
   <depend>tf</depend>
+  <depend>tf_conversions</depend>
   <depend>actionlib</depend>
   
   <depend>huskanypulator_msgs</depend>

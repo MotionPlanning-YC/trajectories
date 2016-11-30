@@ -10,6 +10,7 @@ find_package(catkin REQUIRED COMPONENTS
   roscpp
   std_srvs
   tf
+  tf_conversions
   actionlib
   huskanypulator_msgs
   mbzirc_mission2_msgs
@@ -28,6 +29,7 @@ catkin_package(
     roscpp
     std_srvs
     tf
+    tf_conversions
     actionlib
     huskanypulator_msgs
     mbzirc_mission2_msgs
