@@ -291,6 +291,7 @@ bool Trajectories::generateLineTrajectory(
     vel = unitDirection * velMagn;
     acc = unitDirection * accMagn;
     rot = startQ.slerp(dposMagn/distance, endQ);
+    rot.normalize();
 
     huskanypulator_msgs::EEstate state;
 
@@ -491,7 +492,10 @@ void Trajectories::joyVelCmdCB(const geometry_msgs::TwistStampedConstPtr& msg){
   const Eigen::Vector3d twistLinear(msg->twist.linear.x,
                                     msg->twist.linear.y,
                                     msg->twist.linear.z);
-  if(twistLinear.norm() < joy_velMin){
+  const Eigen::Vector3d twistAngular(msg->twist.angular.x,
+                                     msg->twist.angular.y,
+                                     msg->twist.angular.z);
+  if(twistLinear.norm() + twistAngular.norm() < joy_velMin){
     return;
   }
 
@@ -515,6 +519,7 @@ void Trajectories::joyVelCmdCB(const geometry_msgs::TwistStampedConstPtr& msg){
       ROS_WARN("[Trajectories::joyVelCmdCB] Unable to get the requested transform. %s", ex.what());
       return;
     }
+
     target_msg_prev_.pose.position.x = T_cmdFrame_ee.getOrigin().x() + msg->twist.linear.x * joy_stepLength;
     target_msg_prev_.pose.position.y = T_cmdFrame_ee.getOrigin().y() + msg->twist.linear.y * joy_stepLength;
     target_msg_prev_.pose.position.z = T_cmdFrame_ee.getOrigin().z() + msg->twist.linear.z * joy_stepLength;
@@ -538,7 +543,19 @@ void Trajectories::joyVelCmdCB(const geometry_msgs::TwistStampedConstPtr& msg){
   target_msg.pose.position.x = target_msg_prev_.pose.position.x + msg->twist.linear.x * joy_stepLength;
   target_msg.pose.position.y = target_msg_prev_.pose.position.y + msg->twist.linear.y * joy_stepLength;
   target_msg.pose.position.z = target_msg_prev_.pose.position.z + msg->twist.linear.z * joy_stepLength;
-  target_msg.pose.orientation = target_msg_prev_.pose.orientation;
+
+  tf::Quaternion q_new_old(tf::Vector3(0.0,0.0,1.0), joy_stepLength*msg->twist.angular.z);
+  tf::Quaternion q_old(target_msg_prev_.pose.orientation.x,
+                       target_msg_prev_.pose.orientation.y,
+                       target_msg_prev_.pose.orientation.z,
+                       target_msg_prev_.pose.orientation.w);
+  tf::Quaternion q_new = q_new_old * q_old;
+  q_new.normalize();
+
+  target_msg.pose.orientation.w = q_new.w();
+  target_msg.pose.orientation.x = q_new.x();
+  target_msg.pose.orientation.y = q_new.y();
+  target_msg.pose.orientation.z = q_new.z();
 
   target_msg.twist.linear.x = 0.0;
   target_msg.twist.linear.y = 0.0;
