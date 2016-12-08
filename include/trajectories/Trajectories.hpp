@@ -123,6 +123,7 @@ class Trajectories {
   huskanypulator_msgs::EEstate::_mission_mode_type missionMode_;
 
   std::vector<huskanypulator_msgs::EEstate> trajectory_;
+  huskanypulator_msgs::EEstate prevFinalTrajPoint_; //final msg published after last msg
   int index_;
 
   huskanypulator_msgs::EEstate target_msg_prev_;

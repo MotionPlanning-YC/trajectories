@@ -27,7 +27,7 @@ line:
     y: 0.10
     z: 0.70
     
-max_velocity: 0.03
+max_velocity: 0.02
 max_acceleration: 0.03
 frame_ID: base_link
 

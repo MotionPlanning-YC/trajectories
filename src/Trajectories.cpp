@@ -57,6 +57,7 @@ bool Trajectories::sendTrajectory(){
   }else if(doLoop_){
     index_ = 0; //if end of trajectory, reset to zero if loop requested
   }else if(genTrajActionServer_->isActive()){
+    prevFinalTrajPoint_ = trajectory_.at(index_);
     genTrajActionServer_->setSucceeded(); //if end of trajectory, arrived at goal
   }//otherwise do nothing, i.e., republish the last trajectory point again next time
 
@@ -432,13 +433,32 @@ void Trajectories::genTrajActionGoalCB(){
     return;
   }
 
-  const Eigen::Vector3d startPoint_in_pub(T_publishFrame_ee_start.getOrigin().x(),
-                                          T_publishFrame_ee_start.getOrigin().y(),
-                                          T_publishFrame_ee_start.getOrigin().z());
+  // starting points (current position according to TF)
+  Eigen::Vector3d startPoint_in_pub(T_publishFrame_ee_start.getOrigin().x(),
+                                    T_publishFrame_ee_start.getOrigin().y(),
+                                    T_publishFrame_ee_start.getOrigin().z());
   Eigen::Quaternion<double> startQ_pub_ee(T_publishFrame_ee_start.getRotation().w(),
                                           T_publishFrame_ee_start.getRotation().x(),
                                           T_publishFrame_ee_start.getRotation().y(),
                                           T_publishFrame_ee_start.getRotation().z());
+
+  //retrieve end point of previous trajectory and check how far it is from current pose
+  const Eigen::Vector3d prevEndPoint_inPub(prevFinalTrajPoint_.pose.position.x,
+                                           prevFinalTrajPoint_.pose.position.y,
+                                           prevFinalTrajPoint_.pose.position.z);
+  const Eigen::Quaternion<double> prevEndQ_pub_ee(prevFinalTrajPoint_.pose.orientation.w,
+                                                  prevFinalTrajPoint_.pose.orientation.x,
+                                                  prevFinalTrajPoint_.pose.orientation.y,
+                                                  prevFinalTrajPoint_.pose.orientation.z);
+
+  if((startPoint_in_pub-prevEndPoint_inPub).norm() < 0.05 and
+      startQ_pub_ee.angularDistance(prevEndQ_pub_ee) < 0.1){
+    startPoint_in_pub = prevEndPoint_inPub;
+    startQ_pub_ee = prevEndQ_pub_ee;
+    ROS_INFO("[Trajectories] using old goal as new starting point");
+  }
+
+
   const Eigen::Vector3d endPoint_in_msg(goal.pose.position.x,
                                         goal.pose.position.y,
                                         goal.pose.position.z);
