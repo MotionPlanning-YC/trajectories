@@ -387,7 +387,7 @@ bool Trajectories::generateLineStart(){
     tfListener_->waitForTransform(frameID_, eeFrameID_, now, ros::Duration(0.2));
     tfListener_->lookupTransform(frameID_, eeFrameID_, now, T_cmdFrame_ee_start);
   }catch (tf::TransformException& ex) {
-    ROS_WARN("[Trajectories::genTrajActionGoalCB] Unable to get the requested transform. %s", ex.what());
+    ROS_WARN("[Trajectories::generateLineStart] Unable to get the requested transform. %s", ex.what());
     return false;
   }
 
@@ -428,7 +428,7 @@ void Trajectories::genTrajActionGoalCB(){
     tfListener_->waitForTransform(publishFrameID_, eeFrameID_, now, ros::Duration(0.2));
     tfListener_->lookupTransform( publishFrameID_, eeFrameID_, now, T_publishFrame_ee_start);
   }catch (tf::TransformException& ex) {
-    ROS_WARN("[Trajectories::genTrajActionGoalCB] Unable to get the requested transform. %s", ex.what());
+    ROS_WARN("[Trajectories::genTrajActionGoalCB] Unable to get the requested transform from EE to publish frame. %s", ex.what());
     genTrajActionServer_->setAborted();
     return;
   }
@@ -480,7 +480,7 @@ void Trajectories::genTrajActionGoalCB(){
       tfListener_->waitForTransform(publishFrameID_, goal.header.frame_id, now, ros::Duration(0.2));
       tfListener_->lookupTransform( publishFrameID_, goal.header.frame_id, now, T_publishFrame_msgFrame);
     }catch (tf::TransformException& ex) {
-      ROS_WARN("[Trajectories::genTrajActionGoalCB] Unable to get the requested transform. %s", ex.what());
+      ROS_WARN("[Trajectories::genTrajActionGoalCB] Unable to get the requested transform from goal to publish frame. %s", ex.what());
       genTrajActionServer_->setAborted();
       return;
     }
