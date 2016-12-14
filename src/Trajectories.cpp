@@ -67,7 +67,6 @@ bool Trajectories::sendTrajectory(){
 void Trajectories::initializeSubscribers() {
   ROS_INFO("[Trajectories::initializeSubscribers] initializing subscribers...");
   tfListener_.reset(new tf::TransformListener());
-  joystickVelSubscriber_ = n_.subscribe("/joy_manager/command_velocity", 1, &Trajectories::joyVelCmdCB, this);
 }
 
 void Trajectories::initializePublishers() {
@@ -504,101 +503,6 @@ void Trajectories::genTrajActionPreemptCB(){
   isGo_ = false;
   trajectory_.clear();
   genTrajActionServer_->setPreempted();
-}
-
-void Trajectories::joyVelCmdCB(const geometry_msgs::TwistStampedConstPtr& msg){
-
-  //check if joystick was only marginally touched
-  const Eigen::Vector3d twistLinear(msg->twist.linear.x,
-                                    msg->twist.linear.y,
-                                    msg->twist.linear.z);
-  const Eigen::Vector3d twistAngular(msg->twist.angular.x,
-                                     msg->twist.angular.y,
-                                     msg->twist.angular.z);
-  if(twistLinear.norm() + twistAngular.norm() < joy_velMin){
-    return;
-  }
-
-
-  //safety: disable everything - use only joystick for control now
-  isGo_ = false;
-  if(genTrajActionServer_->isActive())
-    genTrajActionServer_->setAborted();
-
-  const std::string cmdFrameID = "base_link"; //frame in which vel cmds are interpreted
-
-
-  if(target_msg_prev_.header.stamp == ros::Time(0.0)){
-    //find start pose (current EE pose) in same frame as velocity command msg
-    tf::StampedTransform T_cmdFrame_ee;
-    ros::Time now = ros::Time::now();
-    try {
-      tfListener_->waitForTransform(cmdFrameID, eeFrameID_, now, ros::Duration(0.2));
-      tfListener_->lookupTransform( cmdFrameID, eeFrameID_, now, T_cmdFrame_ee);
-    }catch (tf::TransformException& ex) {
-      ROS_WARN("[Trajectories::joyVelCmdCB] Unable to get the requested transform. %s", ex.what());
-      return;
-    }
-
-    target_msg_prev_.pose.position.x = T_cmdFrame_ee.getOrigin().x() + msg->twist.linear.x * joy_stepLength;
-    target_msg_prev_.pose.position.y = T_cmdFrame_ee.getOrigin().y() + msg->twist.linear.y * joy_stepLength;
-    target_msg_prev_.pose.position.z = T_cmdFrame_ee.getOrigin().z() + msg->twist.linear.z * joy_stepLength;
-    target_msg_prev_.pose.orientation.w = T_cmdFrame_ee.getRotation().w();
-    target_msg_prev_.pose.orientation.x = T_cmdFrame_ee.getRotation().x();
-    target_msg_prev_.pose.orientation.y = T_cmdFrame_ee.getRotation().y();
-    target_msg_prev_.pose.orientation.z = T_cmdFrame_ee.getRotation().z();
-  }
-
-  //construct new target point and publish
-  huskanypulator_msgs::EEstate target_msg;
-
-  target_msg.header.frame_id = cmdFrameID;
-  target_msg.header.stamp = msg->header.stamp;
-  target_msg.use_pose = true;
-  target_msg.use_twist = false;
-  target_msg.use_accel = false;
-  target_msg.use_wrench = false;
-  target_msg.mission_mode = huskanypulator_msgs::EEstate::MISSION_MODE_FREEMOTION;
-
-  target_msg.pose.position.x = target_msg_prev_.pose.position.x + msg->twist.linear.x * joy_stepLength;
-  target_msg.pose.position.y = target_msg_prev_.pose.position.y + msg->twist.linear.y * joy_stepLength;
-  target_msg.pose.position.z = target_msg_prev_.pose.position.z + msg->twist.linear.z * joy_stepLength;
-
-  tf::Quaternion q_new_old(tf::Vector3(0.0,0.0,1.0), joy_stepLength*msg->twist.angular.z);
-  tf::Quaternion q_old(target_msg_prev_.pose.orientation.x,
-                       target_msg_prev_.pose.orientation.y,
-                       target_msg_prev_.pose.orientation.z,
-                       target_msg_prev_.pose.orientation.w);
-  tf::Quaternion q_new = q_new_old * q_old;
-  q_new.normalize();
-
-  target_msg.pose.orientation.w = q_new.w();
-  target_msg.pose.orientation.x = q_new.x();
-  target_msg.pose.orientation.y = q_new.y();
-  target_msg.pose.orientation.z = q_new.z();
-
-  target_msg.twist.linear.x = 0.0;
-  target_msg.twist.linear.y = 0.0;
-  target_msg.twist.linear.z = 0.0;
-  target_msg.twist.angular.x = 0.0;
-  target_msg.twist.angular.y = 0.0;
-  target_msg.twist.angular.z = 0.0;
-
-  target_msg.accel.linear.x = 0.0;
-  target_msg.accel.linear.y = 0.0;
-  target_msg.accel.linear.z = 0.0;
-  target_msg.accel.angular.x = 0.0;
-  target_msg.accel.angular.y = 0.0;
-  target_msg.accel.angular.z = 0.0;
-
-  target_msg.wrench.force.x = 0.0;
-  target_msg.wrench.force.y = 0.0;
-  target_msg.wrench.force.z = 0.0;
-  target_msg.wrench.torque.x = 0.0;
-  target_msg.wrench.torque.y = 0.0;
-  target_msg.wrench.torque.z = 0.0;
-
-  publishTargetMsg(target_msg);
 }
 
 void Trajectories::publishTargetMsg(const huskanypulator_msgs::EEstate& msg) {

@@ -72,8 +72,6 @@ class Trajectories {
   bool generateLineStart();
   void publishTargetMsg(const huskanypulator_msgs::EEstate& msg);
 
-  void joyVelCmdCB(const geometry_msgs::TwistStampedConstPtr& msg);
-
   bool fifthOrderPolynomial(const double &t, const double &Tf, const double &d, double &dpos, double &vel, double &accel);
 
   void genTrajActionPreemptCB();
@@ -83,9 +81,6 @@ class Trajectories {
   ros::Publisher CommandPublisher_;
   ros::Publisher TrajectoryPosePublisher_;
   ros::Publisher TrajectoryTwistPublisher_;
-
-  //Subscribers
-  ros::Subscriber joystickVelSubscriber_;
 
   // Services
   ros::ServiceServer goCircle_;
