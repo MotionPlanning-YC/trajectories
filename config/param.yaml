@@ -40,7 +40,7 @@ orientation:
 
 # Frame ids
 EE_frame_ID: TOOL
-publish_frame_ID: base_link
+publish_frame_ID: base_link # the frame in which the trajectory should be published
 
 joystick:
   step_length_gain: 0.02; # [s] multiplicator to the velocity for incremental position update

@@ -112,7 +112,7 @@ class Trajectories {
 
   std::string frameID_;
   std::string eeFrameID_;
-  std::string publishFrameID_;
+  std::string publishFrameID_; // the frame in which the trajectory should be published
   std::string commandPublisherTopic_;
   std::string actionServerName_;
   huskanypulator_msgs::EEstate::_mission_mode_type missionMode_;
