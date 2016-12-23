@@ -59,6 +59,8 @@ bool Trajectories::sendTrajectory(){
   }else if(genTrajActionServer_->isActive()){
     prevFinalTrajPoint_ = trajectory_.at(index_);
     genTrajActionServer_->setSucceeded(); //if end of trajectory, arrived at goal
+    isGo_ = false;
+    ROS_INFO("[Trajectories] End of trajectory. Action succeeded.");
   }//otherwise do nothing, i.e., republish the last trajectory point again next time
 
   return true;
