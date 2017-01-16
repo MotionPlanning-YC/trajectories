@@ -72,7 +72,7 @@ class Trajectories {
   bool generateLineStart();
   void publishTargetMsg(const huskanypulator_msgs::EEstate& msg);
 
-  bool fifthOrderPolynomial(const double &t, const double &Tf, const double &d, double &dpos, double &vel, double &accel);
+  bool fifthOrderPolynomial(double t, double Tf, double d, double dpos, double vel, double accel);
 
   void genTrajActionPreemptCB();
   void genTrajActionGoalCB();
@@ -103,7 +103,7 @@ class Trajectories {
   double circleRadius_;
 
   Eigen::Vector3d lineStart_, lineEnd_;
-  double maxVel_, maxAccel_;
+  double maxVel_, maxAccel_, maxAngularVel_;
 
   Eigen::Quaternion<double> orientationQ_;
 

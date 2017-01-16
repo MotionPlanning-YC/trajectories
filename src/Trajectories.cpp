@@ -138,8 +138,10 @@ bool Trajectories::readParameters() {
    */
   n_.param<double>("max_velocity", maxVel_, 0.2);
   n_.param<double>("max_acceleration", maxAccel_, 0.2);
+  n_.param<double>("max_angular_vel", maxAngularVel_, 0.1);
   ROS_INFO_STREAM("[Trajectories::readParameters] Max velocity = " << maxVel_);
   ROS_INFO_STREAM("[Trajectories::readParameters] Max acceleration = " << maxAccel_);
+  ROS_INFO_STREAM("[Trajectories::readParameters] Max angular velocity = " << maxAngularVel_);
 
   /*
    * Orientation
@@ -257,7 +259,7 @@ bool Trajectories::generateLineTrajectory(
 
   const double dt = 1.0 / pubFreq_;
   const double distance = (endPoint - startPoint).norm();
-  double t = 0.0;
+
   Eigen::Vector3d unitDirection = (endPoint - startPoint).normalized();
   Eigen::Vector3d pos = startPoint;
   Eigen::Vector3d vel = Eigen::Vector3d::Zero();
@@ -269,22 +271,31 @@ bool Trajectories::generateLineTrajectory(
    */
 
   // max velocity time limit
-  double T_vel = distance / maxVel_ * (15.0 / 8.0);
+  const double T_vel = distance / maxVel_ * (15.0 / 8.0);
 
   // max acceleration limit
-  double t_T = (6.0 - sqrt(12.0)) / 12.0;
-  double T_acc = sqrt((distance * 60.0 * t_T / maxAccel_)*(1.0 - 3.0 * t_T + 2.0 * pow(t_T,2)));
+  constexpr double t_T = (6.0 - sqrt(12.0)) / 12.0;
+  const double T_acc = sqrt((distance * 60.0 * t_T / maxAccel_)*(1.0 - 3.0 * t_T + 2.0 * pow(t_T,2)));
+
+  // max rotation time limit
+  const double T_angular = startQ.angularDistance(endQ) / maxAngularVel_;
 
   double tf;
   if (T_vel > T_acc){
-    ROS_INFO("[Trajectories::generateLineTrajectory] limited by velocity");
-    tf = T_vel;
+    if(T_vel > T_angular){
+      ROS_INFO("[Trajectories::generateLineTrajectory] limited by linear velocity");
+      tf = T_vel;
+    }else{
+      ROS_INFO("[Trajectories::generateLineTrajectory] limited by angular velocity");
+      tf = T_angular;
+    }
   }else{
     ROS_INFO("[Trajectories::generateLineTrajectory] limited by acceleration");
     tf = T_acc;
   }
   double dposMagn, velMagn, accMagn;
 
+  double t = 0.0;
   while(t < tf){
 
     fifthOrderPolynomial(t, tf, distance, dposMagn, velMagn, accMagn);
@@ -292,7 +303,7 @@ bool Trajectories::generateLineTrajectory(
     pos = startPoint + unitDirection * dposMagn;
     vel = unitDirection * velMagn;
     acc = unitDirection * accMagn;
-    rot = startQ.slerp(dposMagn/distance, endQ);
+    rot = startQ.slerp(t/tf, endQ);
     rot.normalize();
 
     huskanypulator_msgs::EEstate state;
@@ -366,7 +377,7 @@ bool Trajectories::generateLineTrajectory(
   return true;
 }
 
-bool Trajectories::fifthOrderPolynomial(const double &t, const double &Tf, const double &d, double &dpos, double &vel, double &accel){
+bool Trajectories::fifthOrderPolynomial(double t, double Tf, double d, double dpos, double vel, double accel){
     double a3 = 10.0 * d / pow(Tf,3);
     double a4 = -15.0 * d / pow(Tf,4);
     double a5 = 6 * d / pow(Tf,5);
