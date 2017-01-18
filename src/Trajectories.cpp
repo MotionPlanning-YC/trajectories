@@ -377,7 +377,8 @@ bool Trajectories::generateLineTrajectory(
   return true;
 }
 
-bool Trajectories::fifthOrderPolynomial(double t, double Tf, double d, double dpos, double vel, double accel){
+bool Trajectories::fifthOrderPolynomial(const double t, const double Tf, const double d,
+                                        double& dpos, double& vel, double& accel){
     double a3 = 10.0 * d / pow(Tf,3);
     double a4 = -15.0 * d / pow(Tf,4);
     double a5 = 6 * d / pow(Tf,5);
