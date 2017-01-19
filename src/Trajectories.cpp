@@ -27,6 +27,7 @@ Trajectories::Trajectories(const ros::NodeHandle& n, const int loopFreq) :
   initializeSubscribers();
   initializePublishers();
   initializeServices();
+  ROS_INFO("[Trajectories] Init done.");
 }
 
 Trajectories::~Trajectories(){}
@@ -40,8 +41,6 @@ void Trajectories::init(){
   target_msg_prev_.header.stamp = ros::Time(0.0);
 
   readParameters();
-
-  ROS_INFO("[Trajectories] Init done.");
 }
 
 
@@ -73,11 +72,7 @@ void Trajectories::initializeSubscribers() {
 
 void Trajectories::initializePublishers() {
   ROS_INFO("[Trajectories::initializePublishers] initializing publishers...");
-  CommandPublisher_ = n_.advertise<huskanypulator_msgs::EEstate>(commandPublisherTopic_, 10);
-  ROS_INFO_STREAM("[Trajectories::initializePublishers] Publishing EE state commands on topic "
-      << commandPublisherTopic_);
-  TrajectoryPosePublisher_ = n_.advertise<geometry_msgs::PoseStamped>("/trajectory_position", 10);
-  TrajectoryTwistPublisher_ = n_.advertise<geometry_msgs::TwistStamped>("/trajectory_velocity", 10);
+  CommandPublisher_ = n_.advertise<huskanypulator_msgs::EEstate>("command_topic", 10);
 }
 
 void Trajectories::initializeServices() {
@@ -88,8 +83,8 @@ void Trajectories::initializeServices() {
   stop_ = n_.advertiseService("stop", &Trajectories::stopCommand, this);
   reset_ = n_.advertiseService("reset", &Trajectories::resetCommand, this);
 
-  genTrajActionServer_ = boost::make_shared<actionlib::SimpleActionServer<mbzirc_mission2_msgs::MoveEEAction>>(
-      n_,actionServerName_,false);
+  genTrajActionServer_.reset(new actionlib::SimpleActionServer<mbzirc_mission2_msgs::MoveEEAction>(
+      n_,"trajectoryAction",false));
   genTrajActionServer_->registerGoalCallback(boost::bind(&Trajectories::genTrajActionGoalCB, this));
   genTrajActionServer_->registerPreemptCallback(boost::bind(&Trajectories::genTrajActionPreemptCB, this));
   genTrajActionServer_->start();
@@ -153,13 +148,7 @@ bool Trajectories::readParameters() {
   ROS_INFO_STREAM("[Trajectories::readParameters] Orientation = " << orientationQ_.vec().transpose());
 
   /*
-   * Topic names
-   */
-  n_.param<std::string>("commandPublisherTopic", commandPublisherTopic_, "/ee_state_command");
-  n_.param<std::string>("actionServerName", actionServerName_, "/genEETrajectory");
-
-  /*
-   * msc
+   * Joystick control
    */
   n_.param<double>("joystick/step_length_gain", joy_stepLength, 0.05);
   n_.param<double>("joystick/vel_min", joy_velMin, 0.0);

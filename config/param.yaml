@@ -1,8 +1,5 @@
 # publishing
 freq: 200 # publishing frequency
-commandPublisherTopic: /huskanypulator/highlevel_controller/ee_state_command
-actionServerName: /genEETrajectory
-
 
 # Circle parameters
 circle:
@@ -27,9 +24,9 @@ line:
     y: 0.10
     z: 0.70
     
-max_velocity: 0.02 # [m/s]
-max_acceleration: 0.03 # [m/s^2]
-max_angular_vel: 0.3 # [rad/s]
+max_velocity: 0.03 # [m/s]
+max_acceleration: 0.05 # [m/s^2]
+max_angular_vel: 0.1 # [rad/s]
 frame_ID: base_link
 
 # Orientation of endeffector
