@@ -275,19 +275,8 @@ bool Trajectories::generateLineTrajectory(
   // max rotation time limit
   const double T_angular = startQ.angularDistance(endQ) / maxAngularVel_;
 
-  double tf;
-  if (T_vel > T_acc){
-    if(T_vel > T_angular){
-      ROS_INFO("[Trajectories::generateLineTrajectory] limited by linear velocity");
-      tf = T_vel;
-    }else{
-      ROS_INFO("[Trajectories::generateLineTrajectory] limited by angular velocity");
-      tf = T_angular;
-    }
-  }else{
-    ROS_INFO("[Trajectories::generateLineTrajectory] limited by acceleration");
-    tf = T_acc;
-  }
+  const double tf = std::max(std::max(T_vel, T_angular), T_acc);
+
   double dposMagn, velMagn, accMagn;
 
   double t = 0.0;
