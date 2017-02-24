@@ -6,7 +6,8 @@
   <arg name="tf_topic"          default="/tf"/>
 
    <!-- Load trajectory generator node with relevant parameters -->
-  <node name="$(arg node_name)" pkg="trajectories" type="trajectories_node" output="screen">
+  <node name="$(arg node_name)" pkg="trajectories" type="trajectories_node"
+        output="screen" respawn="true" launch-prefix="">
     <rosparam command="load" file="$(find trajectories)/config/param.yaml"/>
     
     <remap from="$(arg node_name)/command_topic"     to="$(arg command_topic)"/>

@@ -48,15 +48,19 @@ bool Trajectories::sendTrajectory(){
   //this method gets called at the specified loop rate if isGo_ is true.
 
   //publish trajectory point at current index
-  trajectory_.at(index_).header.stamp = ros::Time::now();//update stamp to allow plotting
-  publishTargetMsg(trajectory_.at(index_));
+  if(trajectory_.size() > 0){
+    trajectory_.at(index_).header.stamp = ros::Time::now();//update stamp to allow plotting
+    publishTargetMsg(trajectory_.at(index_));
+  }
 
   if(index_+1 < trajectory_.size()){
     index_++; //increment index as long as trajectory has further points
   }else if(doLoop_){
     index_ = 0; //if end of trajectory, reset to zero if loop requested
   }else if(genTrajActionServer_->isActive()){
-    prevFinalTrajPoint_ = trajectory_.at(index_);
+    if(trajectory_.size() > 0){
+      prevFinalTrajPoint_ = trajectory_.at(index_);
+    }
     genTrajActionServer_->setSucceeded(); //if end of trajectory, arrived at goal
     isGo_ = false;
     ROS_INFO("[Trajectories] End of trajectory. Action succeeded.");
@@ -226,6 +230,8 @@ bool Trajectories::resetCommand(std_srvs::Empty::Request &req,
 }
 
 bool Trajectories::generateCircleTrajectory(){
+  isGo_ = false;
+  doLoop_ = false;
   trajectory_.clear();
   index_ = 0;
   ROS_INFO("[Trajectories::generateCircleTrajectory] Not yet implemented.");
@@ -468,6 +474,13 @@ void Trajectories::genTrajActionGoalCB(){
                                         goal.pose.orientation.x,
                                         goal.pose.orientation.y,
                                         goal.pose.orientation.z);
+
+  if(std::abs(endQ_msg_ee.norm() - 1.0) > 0.1){
+    ROS_WARN("[Trajectories::genTrajActionGoalCB] Received invalid quaternion (w,x,y,z) = (%f.2, %f.2, %f.2, %f.2). Aborting action",
+        goal.pose.orientation.w, goal.pose.orientation.x, goal.pose.orientation.y, goal.pose.orientation.z);
+    genTrajActionServer_->setAborted();
+    return;
+  }
 
   startQ_pub_ee.normalize();
   endQ_msg_ee.normalize();
