@@ -507,6 +507,7 @@ void Trajectories::genTrajActionGoalCB(){
 void Trajectories::genTrajActionPreemptCB(){
   isGo_ = false;
   trajectory_.clear();
+  ROS_INFO("[Trajectories::genTrajActionPreemptCB] Preempted.");
   genTrajActionServer_->setPreempted();
 }
 
