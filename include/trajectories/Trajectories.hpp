@@ -72,6 +72,19 @@ class Trajectories {
   bool generateLineStart();
   void publishTargetMsg(const huskanypulator_msgs::EEstate& msg);
 
+  /*
+   * Calculates a fith order polynomial:
+   * x(t) = a0 + a1*t + a2*t^2 +   a3*t^3 +   a4*t^4 +    a5*t^5
+   * v(t) =      a1   + 2*a2*t + 3*a3*t^2 + 4*a4*t^3 +  5*a5*t^4
+   * a(t) =             2*a2   + 6*a3*t  + 12*a4*t^2 + 20*a5*t^3
+   *
+   * with the conditions
+   * x(0) = v(0) = a(0) = 0
+   * x(Tf) = d
+   * v(Tf) = a(Tf) = 0
+   *
+   * and returns the current values of x(t),v(t),a(t)
+   */
   bool fifthOrderPolynomial(const double t, const double Tf, const double d,
                             double& dpos, double& vel, double& accel);
 

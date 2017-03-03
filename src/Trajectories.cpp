@@ -276,6 +276,7 @@ bool Trajectories::generateLineTrajectory(
   const double T_angular = startQ.angularDistance(endQ) / maxAngularVel_;
 
   const double tf = std::max(std::max(T_vel, T_angular), T_acc);
+  ROS_WARN_COND(tf>100.0, "[Trajectories::generateLineTrajectory] Calculated trajectory time is long: %.2f seconds.", tf);
 
   double dposMagn, velMagn, accMagn;
 
@@ -363,9 +364,9 @@ bool Trajectories::generateLineTrajectory(
 
 bool Trajectories::fifthOrderPolynomial(const double t, const double Tf, const double d,
                                         double& dpos, double& vel, double& accel){
-    double a3 = 10.0 * d / pow(Tf,3);
-    double a4 = -15.0 * d / pow(Tf,4);
-    double a5 = 6 * d / pow(Tf,5);
+    const double a3 =  10.0 * d / pow(Tf,3);
+    const double a4 = -15.0 * d / pow(Tf,4);
+    const double a5 =   6.0 * d / pow(Tf,5);
 
     dpos = a3 * pow(t,3) + a4 * pow(t,4) + a5 * pow(t,5);
     vel = 3.0 * a3 * pow(t,2) + 4.0 * a4 * pow(t,3) + 5.0 * a5 * pow(t,4);
