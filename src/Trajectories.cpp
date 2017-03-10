@@ -58,9 +58,6 @@ bool Trajectories::sendTrajectory(){
   }else if(doLoop_){
     index_ = 0; //if end of trajectory, reset to zero if loop requested
   }else if(genTrajActionServer_->isActive()){
-    if(trajectory_.size() > 0){
-      prevFinalTrajPoint_ = trajectory_.at(index_);
-    }
     genTrajActionServer_->setSucceeded(); //if end of trajectory, arrived at goal
     isGo_ = false;
     ROS_INFO("[Trajectories] End of trajectory. Action succeeded.");
@@ -514,6 +511,7 @@ void Trajectories::genTrajActionPreemptCB(){
 
 void Trajectories::publishTargetMsg(const huskanypulator_msgs::EEstate& msg) {
   CommandPublisher_.publish(msg);
+  prevFinalTrajPoint_ = trajectory_.at(index_);
   target_msg_prev_ = msg;
 }
 
